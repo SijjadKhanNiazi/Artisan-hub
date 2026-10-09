@@ -155,9 +155,7 @@ export default function AddProductModal({ isOpen, onClose }) {
             disabled={mutation.isPending}
             className="w-full bg-amber-600 text-white py-2 rounded-lg font-semibold hover:bg-amber-700 transition disabled:bg-gray-400"
           >
-            {mutation.isPending
-              ? "Uploading to Cloudinary & Saving..."
-              : "Publish Product"}
+            {mutation.isPending ? "Saving..." : "Publish Product"}
           </button>
         </form>
       </div>
