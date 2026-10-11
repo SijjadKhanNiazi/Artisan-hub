@@ -1,4 +1,3 @@
-import React from "react";
 import { ShoppingBag, Store } from "lucide-react";
 import { useCartStore } from "../store/useCartStore";
 
