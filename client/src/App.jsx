@@ -230,7 +230,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Add Product Modal */}
+      {/* Add Product Moddal */}
       <AddProductModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
