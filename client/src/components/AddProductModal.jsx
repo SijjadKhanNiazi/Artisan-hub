@@ -19,7 +19,7 @@ export default function AddProductModal({ isOpen, onClose }) {
       // Invalidate products query to refetch fresh list instantly
       queryClient.invalidateQueries(["products"]);
       onClose();
-      // Reset form
+      // Reset form here
       setName("");
       setDescription("");
       setPrice("");
