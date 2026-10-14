@@ -1,359 +1,45 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchProducts } from "./services/api";
 import { useCartStore } from "./store/useCartStore";
 import Navbar from "./components/Navbar";
 import AddProductModal from "./components/AddProductModal";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Check,
-  Plus,
-  RefreshCw,
-  SearchX,
-  ShoppingCart,
-  Sparkles,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Plus, ShoppingCart, Sparkles, Trash2, X } from "lucide-react";
 
-const SORT_OPTIONS = [
-  { value: "featured", label: "Featured" },
-  { value: "price-asc", label: "Price: Low to High" },
-  { value: "price-desc", label: "Price: High to Low" },
-  { value: "name-asc", label: "Name: A to Z" },
-];
-
-const formatPKR = (value) => `PKR ${Number(value || 0).toLocaleString()}`;
-
-/* ---------------------------- Product Skeleton ---------------------------- */
-function ProductSkeleton() {
-  return (
-    <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden animate-pulse">
-      <div className="h-56 bg-slate-200" />
-      <div className="p-5 space-y-3">
-        <div className="h-5 w-3/4 bg-slate-200 rounded" />
-        <div className="h-3 w-full bg-slate-100 rounded" />
-        <div className="h-3 w-2/3 bg-slate-100 rounded" />
-        <div className="flex justify-between items-center pt-4 border-t border-slate-100">
-          <div className="h-6 w-24 bg-slate-200 rounded" />
-          <div className="h-9 w-16 bg-slate-200 rounded-2xl" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------ Product Card ------------------------------ */
-function ProductCard({ product, onAdd }) {
-  const [justAdded, setJustAdded] = useState(false);
-
-  useEffect(() => {
-    if (!justAdded) return;
-    const t = setTimeout(() => setJustAdded(false), 1200);
-    return () => clearTimeout(t);
-  }, [justAdded]);
-
-  const handleAdd = () => {
-    onAdd(product);
-    setJustAdded(true);
-  };
-
-  return (
-    <div className="bg-white rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-slate-100 flex flex-col group">
-      <div className="h-56 overflow-hidden bg-slate-100 relative">
-        {product.image?.url && (
-          <img
-            src={product.image.url}
-            alt={product.name}
-            loading="lazy"
-            className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-          />
-        )}
-        {product.category && (
-          <span className="absolute top-3 left-3 bg-slate-900/70 backdrop-blur-md text-white text-xs px-3 py-1 rounded-full font-medium tracking-wide">
-            {product.category}
-          </span>
-        )}
-      </div>
-
-      <div className="p-5 flex flex-col flex-grow">
-        <h3 className="font-bold text-lg text-slate-800 mb-1.5 group-hover:text-amber-700 transition line-clamp-1">
-          {product.name}
-        </h3>
-        <p className="text-slate-600 text-sm line-clamp-2 mb-4 flex-grow leading-relaxed">
-          {product.description}
-        </p>
-        <div className="flex justify-between items-center mt-auto pt-3 border-t border-slate-100">
-          <div>
-            <span className="text-xs text-slate-400 block font-medium">
-              Price
-            </span>
-            <span className="text-amber-700 font-extrabold text-lg">
-              {formatPKR(product.price)}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={handleAdd}
-            className={`px-3.5 py-2 rounded-2xl transition-all font-semibold text-sm flex items-center gap-1.5 shadow-sm active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
-              justAdded
-                ? "bg-emerald-500 text-white"
-                : "bg-amber-50 text-amber-800 hover:bg-amber-600 hover:text-white"
-            }`}
-          >
-            {justAdded ? (
-              <>
-                <Check className="w-4 h-4" /> Added
-              </>
-            ) : (
-              <>
-                <Plus className="w-4 h-4" /> Add
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------- Cart Drawer ------------------------------ */
-function CartDrawer({ onClose, cart, totalPrice, onRemove, onClear }) {
-  const [visible, setVisible] = useState(false);
-  const [orderPlaced, setOrderPlaced] = useState(false);
-
-  // Slide-in animation on mount
-  useEffect(() => {
-    const raf = requestAnimationFrame(() => setVisible(true));
-    return () => cancelAnimationFrame(raf);
-  }, []);
-
-  // Escape to close + scroll lock
-  useEffect(() => {
-    const onKeyDown = (e) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKeyDown);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = prev;
-    };
-  }, [onClose]);
-
-  const handleCheckout = () => {
-    onClear();
-    setOrderPlaced(true);
-  };
-
-  return (
-    <div
-      className={`fixed inset-0 flex justify-end z-50 transition-colors duration-300 backdrop-blur-sm ${
-        visible ? "bg-slate-900/40" : "bg-slate-900/0"
-      }`}
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <aside
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="cart-title"
-        className={`bg-white w-full max-w-md h-full p-6 flex flex-col shadow-2xl transform transition-transform duration-300 ease-out ${
-          visible ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        <div className="flex justify-between items-center pb-4 border-b border-slate-100">
-          <h3
-            id="cart-title"
-            className="text-xl font-bold flex items-center gap-2 text-slate-800"
-          >
-            <ShoppingCart className="w-6 h-6 text-amber-600" /> Your Shopping
-            Cart
-          </h3>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close cart"
-            className="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="flex-grow overflow-y-auto py-4 space-y-3">
-          {orderPlaced ? (
-            <div className="text-center py-20 px-4">
-              <CheckCircle2 className="w-14 h-14 mx-auto mb-3 text-emerald-500" />
-              <p className="font-bold text-lg text-slate-800">
-                Order placed successfully
-              </p>
-              <p className="text-sm text-slate-500 mt-1">
-                This is a demo checkout. Thank you for supporting local
-                artisans.
-              </p>
-              <button
-                type="button"
-                onClick={onClose}
-                className="mt-6 bg-amber-600 text-white px-6 py-2.5 rounded-2xl font-semibold hover:bg-amber-700 transition"
-              >
-                Continue Shopping
-              </button>
-            </div>
-          ) : cart.length === 0 ? (
-            <div className="text-center text-slate-400 py-20">
-              <ShoppingCart className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p className="font-medium">Your cart is empty.</p>
-            </div>
-          ) : (
-            cart.map((item) => (
-              <div
-                key={item._id}
-                className="flex items-center justify-between bg-slate-50 p-3.5 rounded-2xl border border-slate-100 gap-3"
-              >
-                {item.image?.url && (
-                  <img
-                    src={item.image.url}
-                    alt={item.name}
-                    className="w-16 h-16 object-cover rounded-xl shadow-sm"
-                  />
-                )}
-                <div className="flex-grow min-w-0">
-                  <h4 className="font-semibold text-sm text-slate-800 truncate">
-                    {item.name}
-                  </h4>
-                  <p className="text-slate-500 text-xs mt-0.5">
-                    {formatPKR(item.price)} × {item.quantity}
-                  </p>
-                  <p className="text-amber-700 text-sm font-bold mt-0.5">
-                    {formatPKR(item.price * item.quantity)}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onRemove(item._id)}
-                  aria-label={`Remove ${item.name} from cart`}
-                  className="text-rose-400 hover:text-rose-600 p-2 rounded-xl hover:bg-rose-50 transition"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-
-        {!orderPlaced && cart.length > 0 && (
-          <div className="pt-4 border-t border-slate-100">
-            <div className="flex justify-between items-center font-bold text-lg mb-4">
-              <span className="text-slate-600">Total Amount:</span>
-              <span className="text-amber-700">{formatPKR(totalPrice)}</span>
-            </div>
-            <button
-              type="button"
-              onClick={handleCheckout}
-              className="w-full bg-amber-600 text-white py-3.5 rounded-2xl font-semibold hover:bg-amber-700 active:scale-[0.99] transition shadow-sm mb-2.5"
-            >
-              Checkout Order
-            </button>
-            <button
-              type="button"
-              onClick={onClear}
-              className="w-full bg-slate-100 text-slate-600 py-2.5 rounded-2xl font-medium hover:bg-slate-200 transition text-sm"
-            >
-              Clear Cart
-            </button>
-          </div>
-        )}
-      </aside>
-    </div>
-  );
-}
-
-/* ----------------------------------- App ---------------------------------- */
 export default function App() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState("All");
-  const [sortBy, setSortBy] = useState("featured");
 
-  // Zustand cart store
+  // Zustand cart store actions & state
   const cart = useCartStore((state) => state.cart);
   const addToCart = useCartStore((state) => state.addToCart);
   const removeFromCart = useCartStore((state) => state.removeFromCart);
   const clearCart = useCartStore((state) => state.clearCart);
 
+  // TanStack Query to fetch products with automatic caching
   const {
     data: products = [],
     isLoading,
     error,
-    refetch,
-    isFetching,
   } = useQuery({
     queryKey: ["products"],
     queryFn: fetchProducts,
   });
 
-  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0,
   );
 
-  const categories = useMemo(() => {
-    const set = new Set(products.map((p) => p.category).filter(Boolean));
-    return ["All", ...Array.from(set)];
-  }, [products]);
-
-  const visibleProducts = useMemo(() => {
-    const q = search.trim().toLowerCase();
-
-    let list = products.filter((p) => {
-      const matchesCategory =
-        activeCategory === "All" || p.category === activeCategory;
-      const matchesSearch =
-        !q ||
-        p.name?.toLowerCase().includes(q) ||
-        p.description?.toLowerCase().includes(q) ||
-        p.category?.toLowerCase().includes(q);
-      return matchesCategory && matchesSearch;
-    });
-
-    switch (sortBy) {
-      case "price-asc":
-        list = [...list].sort((a, b) => a.price - b.price);
-        break;
-      case "price-desc":
-        list = [...list].sort((a, b) => b.price - a.price);
-        break;
-      case "name-asc":
-        list = [...list].sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      default:
-        break;
-    }
-    return list;
-  }, [products, search, activeCategory, sortBy]);
-
-  const hasActiveFilters = search.trim() !== "" || activeCategory !== "All";
-
-  const clearFilters = () => {
-    setSearch("");
-    setActiveCategory("All");
-  };
-
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 w-full overflow-x-hidden">
+      {/* Navbar */}
       <Navbar
         onOpenAddModal={() => setIsAddModalOpen(true)}
         onOpenCart={() => setIsCartOpen(true)}
-        searchQuery={search}
-        onSearchChange={setSearch}
       />
 
-      {/* Hero */}
+      {/* Hero Banner - Full Screen Stretch */}
       <section className="bg-gradient-to-r from-amber-900 via-amber-800 to-amber-700 text-white py-16 px-6 lg:px-12 shadow-md w-full">
         <div className="w-full text-center max-w-4xl mx-auto">
           <h1 className="text-3xl md:text-5xl font-black tracking-tight mb-4">
@@ -367,9 +53,9 @@ export default function App() {
         </div>
       </section>
 
+      {/* Main Content Container - Full Width */}
       <main className="w-full px-6 lg:px-12 py-10">
-        {/* Section header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 pb-4 border-b border-slate-200">
           <div>
             <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
               <Sparkles className="w-6 h-6 text-amber-600" /> Featured
@@ -380,102 +66,33 @@ export default function App() {
             </p>
           </div>
           <button
-            type="button"
             onClick={() => setIsCartOpen(true)}
-            className="bg-slate-900 text-white px-5 py-2.5 rounded-2xl font-semibold hover:bg-slate-800 active:scale-95 transition shadow-sm flex items-center gap-2 text-sm"
+            className="bg-slate-900 text-white px-5 py-2.5 rounded-2xl font-semibold hover:bg-slate-800 transition shadow-sm flex items-center gap-2 text-sm"
           >
-            <ShoppingCart className="w-4 h-4" /> View Cart ({totalItems})
+            <ShoppingCart className="w-4 h-4" /> View Cart ({cart.length})
           </button>
         </div>
 
-        {/* Filters toolbar */}
-        {!isLoading && !error && products.length > 0 && (
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8 pb-4 border-b border-slate-200">
-            <div
-              className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1"
-              role="tablist"
-              aria-label="Product categories"
-            >
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeCategory === cat}
-                  onClick={() => setActiveCategory(cat)}
-                  className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition ${
-                    activeCategory === cat
-                      ? "bg-amber-600 text-white shadow-sm"
-                      : "bg-white text-slate-600 border border-slate-200 hover:border-amber-400 hover:text-amber-700"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-3 shrink-0">
-              <span className="text-sm text-slate-500 hidden sm:block">
-                {visibleProducts.length}{" "}
-                {visibleProducts.length === 1 ? "product" : "products"}
-              </span>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                aria-label="Sort products"
-                className="bg-white border border-slate-200 text-sm text-slate-700 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-400"
-              >
-                {SORT_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
-
-        {/* Loading skeletons */}
+        {/* Loading and Error states */}
         {isLoading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <ProductSkeleton key={i} />
-            ))}
+          <div className="text-center py-24 text-slate-400 text-lg font-medium">
+            Loading local crafts...
           </div>
         )}
 
-        {/* Error */}
         {error && (
-          <div className="text-center py-16 bg-white rounded-3xl border border-slate-100 shadow-sm mx-auto max-w-xl px-6">
-            <AlertTriangle className="w-10 h-10 mx-auto mb-3 text-rose-500" />
-            <p className="text-rose-600 text-lg font-semibold">
-              Error loading products
-            </p>
-            <p className="text-slate-500 text-sm mt-1">
-              Make sure your backend server is running on port 5000.
-            </p>
-            <button
-              type="button"
-              onClick={() => refetch()}
-              disabled={isFetching}
-              className="mt-5 inline-flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-2xl font-semibold hover:bg-slate-800 transition disabled:opacity-60"
-            >
-              <RefreshCw
-                className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`}
-              />
-              {isFetching ? "Retrying..." : "Try Again"}
-            </button>
+          <div className="text-center py-24 text-rose-500 text-lg font-medium bg-white rounded-3xl border border-slate-100 shadow-sm mx-auto max-w-xl">
+            ⚠️ Error loading products. Make sure your backend server is running
+            on port 5000!
           </div>
         )}
 
-        {/* Empty store */}
         {!isLoading && !error && products.length === 0 && (
           <div className="text-center py-20 bg-white rounded-3xl shadow-sm border border-slate-100 max-w-xl mx-auto p-8">
             <p className="text-slate-500 mb-4 font-medium">
               No products found yet. Start by adding your first craft!
             </p>
             <button
-              type="button"
               onClick={() => setIsAddModalOpen(true)}
               className="bg-amber-600 text-white px-6 py-3 rounded-2xl font-semibold hover:bg-amber-700 transition shadow-sm"
             >
@@ -484,57 +101,136 @@ export default function App() {
           </div>
         )}
 
-        {/* No results for filters */}
-        {!isLoading &&
-          !error &&
-          products.length > 0 &&
-          visibleProducts.length === 0 && (
-            <div className="text-center py-16 bg-white rounded-3xl shadow-sm border border-slate-100 max-w-xl mx-auto p-8">
-              <SearchX className="w-10 h-10 mx-auto mb-3 text-slate-300" />
-              <p className="text-slate-700 font-semibold">
-                No matching products
-              </p>
-              <p className="text-slate-500 text-sm mt-1">
-                Try a different keyword or category.
-              </p>
-              {hasActiveFilters && (
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  className="mt-5 bg-amber-600 text-white px-5 py-2.5 rounded-2xl font-semibold hover:bg-amber-700 transition"
-                >
-                  Clear Filters
-                </button>
-              )}
+        {/* Products Grid - Optimized for full width responsiveness */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+          {products.map((product) => (
+            <div
+              key={product._id}
+              className="bg-white rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-slate-100 flex flex-col group"
+            >
+              <div className="h-56 overflow-hidden bg-slate-100 relative">
+                <img
+                  src={product.image.url}
+                  alt={product.name}
+                  className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                />
+                <span className="absolute top-3 left-3 bg-slate-900/70 backdrop-blur-md text-white text-xs px-3 py-1 rounded-full font-medium tracking-wide">
+                  {product.category}
+                </span>
+              </div>
+              <div className="p-5 flex flex-col flex-grow">
+                <h3 className="font-bold text-lg text-slate-800 mb-1.5 group-hover:text-amber-700 transition">
+                  {product.name}
+                </h3>
+                <p className="text-slate-600 text-sm line-clamp-2 mb-4 flex-grow leading-relaxed">
+                  {product.description}
+                </p>
+                <div className="flex justify-between items-center mt-auto pt-3 border-t border-slate-100">
+                  <div>
+                    <span className="text-xs text-slate-400 block font-medium">
+                      Price
+                    </span>
+                    <span className="text-amber-700 font-extrabold text-lg">
+                      PKR {product.price.toLocaleString()}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => addToCart(product)}
+                    className="bg-amber-50 text-amber-800 px-3.5 py-2 rounded-2xl hover:bg-amber-600 hover:text-white transition-all font-semibold text-sm flex items-center gap-1.5 shadow-sm"
+                  >
+                    <Plus className="w-4 h-4" /> Add
+                  </button>
+                </div>
+              </div>
             </div>
-          )}
-
-        {/* Products grid */}
-        {!isLoading && !error && visibleProducts.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            {visibleProducts.map((product) => (
-              <ProductCard
-                key={product._id}
-                product={product}
-                onAdd={addToCart}
-              />
-            ))}
-          </div>
-        )}
+          ))}
+        </div>
       </main>
 
-      {/* Cart drawer */}
+      {/* Cart Slide-over Sidebar Modal */}
       {isCartOpen && (
-        <CartDrawer
-          onClose={() => setIsCartOpen(false)}
-          cart={cart}
-          totalPrice={totalPrice}
-          onRemove={removeFromCart}
-          onClear={clearCart}
-        />
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex justify-end z-50 transition-all">
+          <div className="bg-white w-full max-w-md h-full p-6 flex flex-col shadow-2xl animate-in slide-in-from-right duration-300">
+            <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+              <h3 className="text-xl font-bold flex items-center gap-2 text-slate-800">
+                <ShoppingCart className="w-6 h-6 text-amber-600" /> Your
+                Shopping Cart
+              </h3>
+              <button
+                onClick={() => setIsCartOpen(false)}
+                className="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-grow overflow-y-auto py-4 space-y-3">
+              {cart.length === 0 ? (
+                <div className="text-center text-slate-400 py-20">
+                  <ShoppingCart className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p className="font-medium">Your cart is empty.</p>
+                </div>
+              ) : (
+                cart.map((item) => (
+                  <div
+                    key={item._id}
+                    className="flex items-center justify-between bg-slate-50 p-3.5 rounded-2xl border border-slate-100 gap-3"
+                  >
+                    <img
+                      src={item.image.url}
+                      alt={item.name}
+                      className="w-16 h-16 object-cover rounded-xl shadow-xs"
+                    />
+                    <div className="flex-grow">
+                      <h4 className="font-semibold text-sm text-slate-800">
+                        {item.name}
+                      </h4>
+                      <p className="text-slate-500 text-xs mt-0.5">
+                        PKR {item.price.toLocaleString()} × {item.quantity}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => removeFromCart(item._id)}
+                      className="text-rose-400 hover:text-rose-600 p-2 rounded-xl hover:bg-rose-50 transition"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {cart.length > 0 && (
+              <div className="pt-4 border-t border-slate-100">
+                <div className="flex justify-between items-center font-bold text-lg mb-4">
+                  <span className="text-slate-600">Total Amount:</span>
+                  <span className="text-amber-700">
+                    PKR {totalPrice.toLocaleString()}
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    alert("Order placed successfully! (Demo Checkout)");
+                    clearCart();
+                    setIsCartOpen(false);
+                  }}
+                  className="w-full bg-amber-600 text-white py-3.5 rounded-2xl font-semibold hover:bg-amber-700 transition shadow-sm mb-2.5"
+                >
+                  Checkout Order
+                </button>
+                <button
+                  onClick={clearCart}
+                  className="w-full bg-slate-100 text-slate-600 py-2.5 rounded-2xl font-medium hover:bg-slate-200 transition text-sm"
+                >
+                  Clear Cart
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
-      {/* Add Product Modal */}
+      {/* Add Product Moddal*/}
       <AddProductModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
